@@ -6,7 +6,7 @@ use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::hash::Hash;
 use std::hash::Hasher;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::marker::Send;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::UnixStream;
@@ -655,8 +655,28 @@ impl Qemu {
         let qmp_sock = gen_sock("qmp");
         let command_sock = gen_sock("cmdout");
         let (init, guest_init) = gen_init(&target.rootfs).context("Failed to generate init")?;
+        let program = target
+            .qemu_command
+            .unwrap_or_else(|| format!("qemu-system-{}", target.arch));
 
-        let mut c = Command::new(format!("qemu-system-{}", target.arch));
+        // Confirm QEMU exists first
+        if let Err(e) = Command::new(&program)
+            .arg("--help")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        {
+            if let ErrorKind::NotFound = e.kind() {
+                return Err(e).context(format!(
+                    "Did not find QEMU binary {program}. Make sure QEMU is installed"
+                ));
+            } else {
+                warn!("Failed to verify that qemu is installed due to error, continuing... {e}");
+            }
+        }
+
+        // Start the main QEMU process
+        let mut c = Command::new(program);
 
         c.args(QEMU_DEFAULT_ARGS)
             .stderr(Stdio::piped())
