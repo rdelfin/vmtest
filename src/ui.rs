@@ -8,7 +8,7 @@ use console::{strip_ansi_codes, style, truncate_str, Style, Term};
 use crate::output::Output;
 use crate::vmtest::Vmtest;
 
-const WINDOW_LENGTH: usize = 10;
+const WINDOW_LENGTH: usize = 30;
 // sysexits.h catchall exit code for when we failed to run the vm for miscellaneous reasons.
 const EX_UNAVAILABLE: i32 = 69;
 
